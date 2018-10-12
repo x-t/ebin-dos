@@ -8,13 +8,14 @@ org 0x7c00          ; We land here
 
 jmp short start                     ; Jump to the useful bit
 
-error_lba: db "Something happened.", 0x0D, 0x0A, "Something happened.", 0x00
+error: db "Something happened.", 0x0D, 0x0A, "Something happened.", 0x00
 
 ; print_srt
 ; Prints a 0x00 terminated string
 ; <- SI - string to print
 print_str:
     push si         ; Yes
+    push ax
     .loop:
         lodsb           ; Load another character from si
         test al, al     ; Test if al=0
@@ -25,6 +26,7 @@ print_str:
         jmp .loop       ; Keep looping
     .exit:
         pop si
+        pop ax
         ret             ; Return from function
 
 ; halt
@@ -51,11 +53,10 @@ start:
     mov ss, ax          ; Segment bullshit
     mov ds, ax
     mov es, ax
-    mov fs, ax
-    mov gs, ax
     mov sp, 0x7bf0      ; Stack shit
     sti
 
+    clc                 ; Clear carry
     mov dl, 0x80        ; The C drive
     mov si, da_packet   ; The DA packet
     mov ah, 0x42        ; CHS BTFO
@@ -64,7 +65,7 @@ start:
     jmp shell_main      ; Phew
 
     .error:
-        mov si, error_lba       ; Something happened
+        mov si, error           ; Something happened
         call print_str          ; Something happened
 
     jmp halt
@@ -82,6 +83,8 @@ deletchar: db 0x08, 0x20, 0x08, 0x00
 input: times 128 db 0x00
 p2: db "' detected to be ebin, aborting.", 0x00
 p1: db "'", 0x00
+spurdo: db "spurdo", 0x00
+absolute_ebin: db ":DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD EBINN", 0x00
 
 ; shell_main
 ; Boots up the shell
@@ -102,26 +105,72 @@ shell_main:
 ; Prints the harmful message
 print_harmful:
     push si
+
+    mov si, input       ; Put it here
+    mov di, spurdo      ; :DDDDD
+    call strcmp         ; Compare
+    cmp dl, 0x01        ; Same?
+    je .ebin            ; YES, EBIN!
+
     mov si, p1          ; Print the first part of message
     call print_str
     mov si, input       ; Print the input
     call print_str
     mov si, p2          ; Print the second part of the message
     call print_str
+    jmp .average_ebin   ; It's ok ebin
+
+    .ebin:
+        mov si, absolute_ebin   ; :::::::DDDDDDDDDDDDDDDDDDD
+        call print_str          ; EBINN
+
+    .average_ebin:
     mov si, endl        ; Newline
     call print_str
     call clear_input    ; Clear the input string
     pop si
     ret                 ; Return
 
+; strcmp
+; Compare string
+; <- DS:SI; ES:DI = strings
+; -> DL = 0x01 if equal, 0x00 if not
+strcmp:
+    push ax                         ; save these
+    push si
+    push di
+    .loop:
+        lodsb                       ; Load character
+        mov ah, byte [es:di]        ; Move a byte from second string
+        inc di                      ; Increment pointer
+        cmp al, ah                  ; Compare characters from string
+        jne .ne                     ; Not equal, get out
+        test al, al                 ; We hit 0
+        jz .e                       ; They're a match! <3 (gay)
+        jmp .loop                   ; We jumped nowhere, continue
+    .ne:
+        xor dl, dl                  ; Clear dl
+        jmp .done                   ; Out
+    .e:
+        mov dl, 0x01                ; Happy couple, still gay
+    .done:
+        pop ax                      ; Goodbye!
+        pop si
+        pop di
+        ret
+
 ; clear_input
 ; Clears the input string
 clear_input:
+    push di
+    push cx
     mov di, input       ; Move input to di
     xor al, al          ; Set al to 0
     mov cx, 128         ; Set cx to 128
     cld                 ; Go forwards
     rep stosb           ; Store zeroes until the end
+    pop di
+    pop cx
     ret                 ; Return
 
 ; shell
