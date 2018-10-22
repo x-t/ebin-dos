@@ -25,8 +25,8 @@ print_str:
         int 0x10        ; Print char from al (BIOS)
         jmp .loop       ; Keep looping
     .exit:
-        pop si
         pop ax
+        pop si
         ret             ; Return from function
 
 ; halt
@@ -50,6 +50,8 @@ dd       0x00
 start:
     xor ax, ax          ; Clear ax
     cli
+    jmp 0x0000:boiler_my_plates
+    boiler_my_plates:
     mov ss, ax          ; Segment bullshit
     mov ds, ax
     mov es, ax
@@ -154,9 +156,9 @@ strcmp:
     .e:
         mov dl, 0x01                ; Happy couple, still gay
     .done:
-        pop ax                      ; Goodbye!
-        pop si
         pop di
+        pop si 
+        pop ax
         ret
 
 ; clear_input
@@ -169,8 +171,8 @@ clear_input:
     mov cx, 128         ; Set cx to 128
     cld                 ; Go forwards
     rep stosb           ; Store zeroes until the end
-    pop di
     pop cx
+    pop di
     ret                 ; Return
 
 ; shell
@@ -204,9 +206,9 @@ shell:
             mov si, endl        ; 0x0D, 0x0A, 0x00
             call print_str      ; Print the newline
             call print_harmful  ; Print that it's harmful
-            pop si
-            pop di
             pop cx
+            pop di
+            pop si
             jmp shell           ; Initialize shell again
         .delet:
             cmp cx, 127         ; Check if it's the start of string
