@@ -2,6 +2,7 @@
 ; Licensed under the ISC License
 ; Check the LICENSE file that
 ; was distributed with this copy.
+;forked for the shirt lmao
 
 bits 16             ; x86 considered harmful
 org 0x7c00          ; We land here
